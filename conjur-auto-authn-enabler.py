@@ -58,15 +58,19 @@ def restart_conjur():
 def main():
     previous_config_authns=""
     while True:
-        configured_authns=get_configured_authn()
-        if configured_authns != previous_config_authns:
-            conjur_authn_line=create_conjur_authenticators_line(configured_authns)
-            replace_conjur_authenticators_config(conjur_authn_line)
-            restart_conjur()
-            previous_config_authns=configured_authns
-        else:
-            print("No newly configured authenticators")
-        time.sleep(5)
+        try:
+            configured_authns=get_configured_authn()
+            if configured_authns != previous_config_authns:
+                conjur_authn_line=create_conjur_authenticators_line(configured_authns)
+                replace_conjur_authenticators_config(conjur_authn_line)
+                restart_conjur()
+                previous_config_authns=configured_authns
+            else:
+                logging.info("No newly configured authenticators")
+            time.sleep(5)
+        except:
+            logging.warning("Failed to connect to {}, trying again in 30 seconds...".format(INFO_URL))
+            time.sleep(30)
 
 if __name__ == "__main__":
     main()
