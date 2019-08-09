@@ -4,6 +4,9 @@ import ssl
 import json
 import time
 import os
+import logging
+
+logging.basicConfig(format='%(asctime)s %(message)s',filename='conjur-auto-authn-enabler.log',level=logging.DEBUG)
 
 INFO_URL = "https://localhost/info"
 CONJUR_ENV_FILE="/opt/conjur/etc/conjur.conf"
@@ -12,7 +15,7 @@ def get_configured_authn():
     context = ssl._create_unverified_context()
     f = urllib.request.urlopen(INFO_URL, context=context)
     response=f.read().decode('utf-8')
-    print(response)
+    logging.info(response)
 
     json_response = json.loads(response)
     try:
@@ -21,7 +24,7 @@ def get_configured_authn():
         time.sleep(5)
         return get_configured_authn()
     
-    print("Configured authns: {}".format(configured_authns))
+    logging.info("Configured authns: {}".format(configured_authns))
     return configured_authns
 
 def create_conjur_authenticators_line(configured_authns):
@@ -41,7 +44,7 @@ def replace_conjur_authenticators_config(conjur_authn_line):
     for i in range(len(lines)):
         line = lines[i]
         if line.startswith("CONJUR_AUTHENTICATORS="):
-            print("changing current {} => {}".format(line, conjur_authn_line))
+            logging.info("changing current {} => {}".format(line, conjur_authn_line))
             conjur_authn_exists=True
             lines[i]=conjur_authn_line
 
@@ -52,21 +55,25 @@ def replace_conjur_authenticators_config(conjur_authn_line):
         f.writelines(lines)
 
 def restart_conjur():
-    print("Restarting conjur")
+    logging.info("Restarting conjur")
     os.system("sv restart conjur")
 
 def main():
     previous_config_authns=""
     while True:
-        configured_authns=get_configured_authn()
-        if configured_authns != previous_config_authns:
-            conjur_authn_line=create_conjur_authenticators_line(configured_authns)
-            replace_conjur_authenticators_config(conjur_authn_line)
-            restart_conjur()
-            previous_config_authns=configured_authns
-        else:
-            print("No newly configured authenticators")
-        time.sleep(5)
+        try:
+            configured_authns=get_configured_authn()
+            if configured_authns != previous_config_authns:
+                conjur_authn_line=create_conjur_authenticators_line(configured_authns)
+                replace_conjur_authenticators_config(conjur_authn_line)
+                restart_conjur()
+                previous_config_authns=configured_authns
+            else:
+                logging.info("No newly configured authenticators")
+            time.sleep(5)
+        except:
+            logging.warning("Failed to connect to {}, trying again in 30 seconds...".format(INFO_URL))
+            time.sleep(30)
 
 if __name__ == "__main__":
     main()
