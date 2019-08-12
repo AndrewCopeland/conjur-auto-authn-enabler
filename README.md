@@ -1,5 +1,5 @@
 # conjur-auto-authn-enabler
-Automatically enable authenticators within cyberark. This will be run as a service on the conjur appliance.
+Automatically enable authenticators for conjur. This will be run as a service on the conjur appliance.
 
 
 ## Installing the code
